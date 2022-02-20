@@ -10,7 +10,7 @@ Start bot using /start. This triggers the daily scheduler to start.
 Use /balance command to query balances on demand.
 """
 
-import logging, schedule, datetime, pytz, yaml
+import logging, datetime, pytz, yaml
 from binance.client import Client
 
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
