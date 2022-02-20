@@ -116,7 +116,7 @@ tail -f /var/log/syslog
 
 #### Remove Script
 
-Removes the currently running service. If you want to restart use this followed by start script.
+Removes the currently running service. If you want to restart the service, use this followed by start script.
 
 ```bash
 ./remove-bot-service.sh
