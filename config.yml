@@ -1,0 +1,13 @@
+telegram:
+  api_key: "API_KEY" # Your telegram bot API key
+  chat_id: 12345678 # Your telegram chat ID
+  daily_job:
+    hour: "12" # Hour in the day to send balance update
+    minute: "00" # Minute in the hour to send balance update
+    timezone: "Europe/London"
+    days: [0, 1, 2, 3, 4, 5, 6] # Days of the week to send balance update (0-6 every day)
+binance:
+  api_key: "API_KEY" # Your Binance API key
+  secret_key: "SECRET_KEY" # Your Binance secret key
+  quote_currency: "USDT" # Quote currency
+  asset_symbols: ["SOL", "LUNA", "MATIC", "FTM"] # All cryptos you want to sum values for
