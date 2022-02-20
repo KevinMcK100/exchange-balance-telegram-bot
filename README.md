@@ -4,7 +4,7 @@
 
 Telegram bot which provides USD value tracking for a subset of assets within your Binance wallet. It allows the user to query balances ad-hoc as well as providing daily balance updates.
 
-### Motivation
+### Problem
 
 I was running some 3Commas bots against my Binance account. 3Commas offers some PnL tracking within the app, however I would prefer to be able to track balances directly from the source exchange to ensure complete accuracy.
 
