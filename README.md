@@ -84,3 +84,48 @@ If you're unsure about how to perform and of the below steps, refer to the Teleg
 - *OPTIONAL (RECOMMENDED)*: Under `Restrict access to trusted IPs only` add the IP address of your server
 - Copy the `API Key` to `binance.api_key` in your config
 - Copy the `Secret Key` to `binance.secret_key` in your config
+
+### Start Bot
+
+You can use the 3 helper shell scripts to start, remove and check status of your service running the Python script:
+
+```text
+start-bot-service.sh
+remove-bot-service.sh
+check-bot-service.sh
+```
+
+#### Start Script
+
+- Open `start-bot-service.sh` and ensure the `INSTALL_DIR` variable matches your install location
+- Execute the start script. This should install all dependencies and start your bot as a service
+
+```bash
+./start-bot-service.sh
+```
+
+- You can check the status of the bot in the logs
+
+```bash
+tail -f /var/log/syslog
+```
+
+- Go to your Telegram group and execute the `/start` command
+- Execute the `/balance` command to test the bot is fetching your balance as expected
+- Your bot is up and running and should send you an updated balance notification each day
+
+#### Remove Script
+
+Removes the currently running service. If you want to restart use this followed by start script.
+
+```bash
+./remove-bot-service.sh
+```
+
+#### Check Status Script
+
+Checks the current status of the running service. It should show `active (running)`.
+
+```bash
+./check-bot-service.sh
+```
