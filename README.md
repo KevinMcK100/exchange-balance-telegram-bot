@@ -17,7 +17,7 @@ Binance will show you the sum of all your assets within your wallet but this was
 
 This bot allows me to solve for both these problems:
 
-1. A predefined list of crypto assets to track means we can sum just a subset of assets in wallet
+1. A predefined list of crypto assets to track or auto-detection of 3Commas open orders means we can sum just a subset of assets in wallet
 2. While the bot can be used to query balances ad-hoc, it also has a scheduler which will send an updated balance notification to Telegram at the same time each day
 
 ## Prerequisites
@@ -30,40 +30,39 @@ You will need to have Python installed on your environment. I'm running on Pytho
 
 Of course, you will also need accounts for Telegram and Binance.
 
-## Installation
+## Configuration
 
-### Configure Bot
+You will need to fill out the config with the credentials for your own Telegram and Binance accounts.
 
-You will need to fill out the config with the credentials for your own Telegram and Binance accounts. The code expects a `.config.yml` file. You can copy `config.yml` and use it as a template.
+The code expects a `.config.yml` file. You can copy `config.yml` and use it as a template.
 
 ```bash
 cp config.yml .config.yml
 ```
 
-#### Keys
+### Telegram Credentials
 
-You will find instructions on how to generate/find the values for all keys in the sections below
+`telegram.api_key`: *(String)* API key for your Telegram bot</br>
+`telegram.chat_id`: *(Float)* Chat ID of the Telegram group you want to send notifications to</br>
 
-- `telegram.api_key`: API key for your Telegram bot
-- `telegram.chat_id`: Chat ID of the Telegram group you want to send notifications to
-- `binance.api_key`: Binance API key to allow read access on your Binance account
-- `binance.secret_key`: Binance secret key to allow read access on your Binance account
+### Telegram Scheduled Notification
 
-#### Daily Notification Scheduler
+`telegram.daily_job.hour`: *(String)* Hour in the day to trigger notification (default mid-day)</br>
+`telegram.daily_job.minute`: *(String)* Minute in the hour to trigger notification</br>
+`telegram.daily_job.timezone`: *(String)* Your local timezone</br>
+`telegram.daily_job.days`: *(List[Integer])* 0 indexed list representing days of the week. (default 7 days per week)</br>
 
-Use `telegram.daily_job` settings to configure when your daily updated balance notifications are sent
+### Binance Credentials
 
-- `telegram.daily_job.hour`: Hour in the day to trigger notification (default mid-day)
-- `telegram.daily_job.minute`: Minute in the hour to trigger notification
-- `telegram.daily_job.timezone`: Your local timezone
-- `telegram.daily_job.days`: 0 indexed list representing days of the week. (default 7 days per week)
+`binance.api_key`: *(String)* Binance API key to allow read access on your Binance account</br>
+`binance.secret_key`: *(String)* Binance secret key to allow read access on your Binance account</br>
 
-#### Assets to Track
+### Binance Assets
 
-Configure which crypto assets you want the bot to track
+`binance.auto_detect_3commas_orders`: *(Boolean)* Attempt to auto-detect base and quote assets used by 3Commas when true *(Overrides `asset_symbols` list when set to true)*</br>
+`binance.asset_symbols`: *(List[String])* All assets to monitor - include both base and quote assets *(Ignored when `auto_detect_3commas_orders` is true)*</br>
 
-- `binance.quote_currency`: Asset used as quote currency in trades (usually a USD stable coin)
-- `binance. asset_symbols`: Symbol of each crypto asset you want to track
+## Installation
 
 ### Create Telegram Bot
 
