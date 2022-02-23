@@ -12,37 +12,45 @@ Use /balance command to query balances on demand.
 
 import logging, datetime, pytz, yaml
 from binance.client import Client
-
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+from operator import itemgetter
+from telegram.ext import Updater, CommandHandler
 
 # Enable logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                    level=logging.INFO)
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
 
 logger = logging.getLogger(__name__)
 
 # Load config from .config.yml file
 def load_conf_file(config_file):
-   with open(config_file, "r") as f:
-       config = yaml.safe_load(f)
-       telegram_config = config["telegram"]
-       binance_config = config["binance"]
-   return telegram_config, binance_config
+    with open(config_file, "r") as f:
+        config = yaml.safe_load(f)
+        telegram_config = config["telegram"]
+        binance_config = config["binance"]
+    return telegram_config, binance_config
+
 
 telegram_config, binance_config = load_conf_file(".config.yml")
 
 
 def start(update, context):
-    """Starts the bot. Execures on /start command"""
-    send_message(context, 'Starting Binance Balance Reporting Bot...')
-    hour = str(telegram_config['daily_job']['hour'])
-    minute = str(telegram_config['daily_job']['minute'])
-    send_message(context, f'Balance updates are scheduled to be sent daily at {hour}:{minute}:00. \n\nAlternatively, use /balance to get current balance')
+    """Starts the bot. Executes on /start command"""
+    send_message(context, "Starting Binance Balance Reporting Bot...")
+    hour = str(telegram_config["daily_job"]["hour"])
+    minute = str(telegram_config["daily_job"]["minute"])
+    send_message(
+        context,
+        f"Balance updates are scheduled to be sent daily at {hour}:{minute}:00. \n\nAlternatively, use /balance to get current balance",
+    )
 
 
 def help(update, context):
     """Sends a help message to the user. Executes on /help command."""
-    send_message(context, 'Balance updates will be sent daily. You can also use /balance to get current balance')
+    send_message(
+        context,
+        "Balance updates will be sent daily. You can also use /balance to get current balance",
+    )
 
 
 def error(update, context):
@@ -52,73 +60,105 @@ def error(update, context):
 
 def send_message(context, message):
     """Sends a message to Telegram based on chat ID of user or group."""
-    context.bot.send_message(chat_id=telegram_config['chat_id'], text=message, parse_mode="Markdown")
-
-
-def get_balance(context):
-    """Fetches and calculates the total balances for all assets in config and sends notificaiton to Telegram"""
-    send_message(context, 'Checking balance...')
-    client = Client(binance_config['api_key'], binance_config['secret_key'])
-    quote_currency = binance_config['quote_currency']
-    quote_balance = client.get_asset_balance(asset=quote_currency)
-    total_quote_balance = round(float(quote_balance['locked']) + float(quote_balance['free']), 2)
-    print(f"{quote_currency}: ${total_quote_balance}")
-    assets_info = f"{quote_currency}: $ {total_quote_balance}\n"
-
-    cryptos = binance_config['asset_symbols']
-
-    for crypto in cryptos:
-        ticker = crypto + quote_currency
-        price = float(client.get_avg_price(symbol=ticker)['price'])
-        asset = client.get_asset_balance(asset=crypto)
-        asset_qty = float(asset['locked']) + float(asset['free'])
-        quote_balance = round(price * asset_qty, 2)
-        log = f"{crypto}: ${quote_balance}"
-        print(log)
-        assets_info += f'{log}\n'
-        total_quote_balance += quote_balance
-
-    rounded_total = str(round(total_quote_balance, 2))
-    print(f'TOTAL: ${rounded_total}')
-    assets_info += f'\n*TOTAL: ${rounded_total}* 🤑'
-    send_message(context, assets_info)
+    context.bot.send_message(
+        chat_id=telegram_config["chat_id"], text=message, parse_mode="HTML"
+    )
 
 
 def check_balance(update, context):
     """Ensures calling user's chat ID matches the chat ID in config. Proceeds with balance check if true."""
-    print(update.message.chat_id)
-    print(telegram_config['chat_id'])
-    if update.message.chat_id == telegram_config['chat_id']:
+    logger.info("Requesting chat ID: %s", update.message.chat_id)
+    if update.message.chat_id == telegram_config["chat_id"]:
+        logger.info("Valid chat ID")
         get_balance(context)
     else:
-        send_message(context, 'Unauthorised!')
+        logger.info("Invalid chat ID")
+        send_message(context, "Unauthorised!")
+
+
+def get_balance(context):
+    """Fetches and calculates the total balances for all assets in config and sends notification to Telegram"""
+    send_message(context, "Checking balance...")
+    client = Client(binance_config["api_key"], binance_config["secret_key"])
+
+    total_quote_balance = 0
+    assets = get_all_assets(client)
+    asset_balance_dict = {}
+
+    for asset in assets:
+        price = (
+            float(client.get_avg_price(symbol=asset + "USDT")["price"])
+            if asset != "USDT"
+            else 1
+        )
+        asset_balance = client.get_asset_balance(asset=asset)
+        asset_qty = float(asset_balance["locked"]) + float(asset_balance["free"])
+        quote_balance = price * asset_qty
+        rounded_balance = "{:.2f}".format(round(quote_balance, 2))
+        asset_balance_dict[asset] = rounded_balance
+        total_quote_balance += quote_balance
+
+    logger.info(asset_balance_dict)
+    rounded_total = "{:.2f}".format(round(total_quote_balance, 2))
+    logger.info("TOTAL: %s", rounded_total)
+
+    telegram_msg = build_telegram_message(asset_balance_dict, rounded_total)
+    logger.info("Formatted Telegram message: \n%s", telegram_msg)
+    send_message(context, telegram_msg)
+
+
+def get_all_assets(client):
+    if binance_config["auto_detect_3commas_orders"]:
+        symbols_3c = {
+            ord["symbol"]
+            for ord in client.get_open_orders()
+            if "deal" in ord["clientOrderId"]
+        }
+        base_quote_assets = [
+            itemgetter("baseAsset", "quoteAsset")(client.get_symbol_info(sym))
+            for sym in symbols_3c
+        ]
+        return sorted({item for sublist in base_quote_assets for item in sublist})
+    else:
+        return sorted(binance_config["asset_symbols"])
+
+
+def build_telegram_message(asset_balance_dict, total_balance):
+    telegram_msg = "<pre>"
+    for key, value in asset_balance_dict.items():
+        telegram_msg += "{0:<6} ${1}".format(key, value) + "\n"
+
+    return telegram_msg + "\n{0:<6} ${1} 🤑</pre>".format("TOTAL", total_balance)
 
 
 def main():
-    """Initialise the bot."""
-    updater = Updater(telegram_config['api_key'], use_context=True)
+    # """Initialise the bot."""
+    updater = Updater(telegram_config["api_key"], use_context=True)
 
     # Add command handlers
     dp = updater.dispatcher
-    dp.add_handler(CommandHandler("start", start))              # /start
-    dp.add_handler(CommandHandler("help", help))                # /help
-    dp.add_handler(CommandHandler("balance", check_balance))    # /balance
-    dp.add_error_handler(error)                                 # /error
+    dp.add_handler(CommandHandler("start", start))  # /start
+    dp.add_handler(CommandHandler("help", help))  # /help
+    dp.add_handler(CommandHandler("balance", check_balance))  # /balance
+    dp.add_error_handler(error)  # /error
 
     # Start the Bot
     updater.start_polling()
 
     # Start daily notification scheduler
-    updater.job_queue.run_daily(get_balance,
-                                datetime.time(
-                                    hour=int(telegram_config['daily_job']['hour']), 
-                                    minute=int(telegram_config['daily_job']['minute']), 
-                                    tzinfo=pytz.timezone(telegram_config['daily_job']['timezone'])),
-                                days=(telegram_config['daily_job']['days']))
+    updater.job_queue.run_daily(
+        get_balance,
+        datetime.time(
+            hour=int(telegram_config["daily_job"]["hour"]),
+            minute=int(telegram_config["daily_job"]["minute"]),
+            tzinfo=pytz.timezone(telegram_config["daily_job"]["timezone"]),
+        ),
+        days=(telegram_config["daily_job"]["days"]),
+    )
 
     # Run the bot until you press Ctrl-C or the process receives SIGINT, SIGTERM or SIGABRT.
     updater.idle()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

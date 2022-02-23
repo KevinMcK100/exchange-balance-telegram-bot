@@ -9,5 +9,5 @@ telegram:
 binance:
   api_key: "API_KEY" # Your Binance API key
   secret_key: "SECRET_KEY" # Your Binance secret key
-  quote_currency: "USDT" # Quote currency
-  asset_symbols: ["SOL", "LUNA", "MATIC", "FTM"] # All cryptos you want to sum values for
+  auto_detect_3commas_orders: true # Attempt to auto-detect base and quote assets used by 3Commas. quote_currency and asset_symbols not used when set to true.
+  asset_symbols: ["SOL", "LUNA", "MATIC", "FTM", "USDT"] # All cryptos you want to sum values for (base and quote assets). Ignored when auto_detect_3commas_orders is true.
