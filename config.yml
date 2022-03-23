@@ -11,3 +11,4 @@ binance:
   secret_key: "SECRET_KEY" # Your Binance secret key
   auto_detect_3commas_orders: true # Attempt to auto-detect base and quote assets used by 3Commas. asset_symbols not used when set to true.
   asset_symbols: ["SOL", "LUNA", "MATIC", "FTM", "USDT"] # All cryptos you want to sum values for (base and quote assets). Ignored when auto_detect_3commas_orders is true.
+  use_flexible_savings: false # If you use my binance-dynamic-savings-bot then set this to true to include quote assets in Flexible Savings within the totals

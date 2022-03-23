@@ -7,8 +7,22 @@ INSTALL_DIR=~/exchange-balance-telegram-bot/exchange-balance-telegram-bot/
 UserBot="$USER"
 PATH=$PATH:/home/${UserBot}/.local/bin;export $PATH
 
-# Install dependencies
+# Install dependencies in virtual environment
+cd ${INSTALL_DIR}/..
+if [ ! -d venv ]; then
+    python3 -m venv venv
+fi
+# Activate virtual environment
+. venv/bin/activate
 cd ${INSTALL_DIR}
+
+# Upgrade pip
+pip install --upgrade pip
+# Install pip-tools to compile dependencies
+python -m pip install pip-tools
+# Compile dependencies and update requirements.txt
+python -m piptools compile --upgrade requirements.in
+# Install dependencies
 pip3 install -r requirements.txt
 
 cat <<EOF >exchange-balance-telegram-bot.service

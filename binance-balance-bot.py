@@ -10,15 +10,16 @@ Start bot using /start. This triggers the daily scheduler to start.
 Use /balance command to query balances on demand.
 """
 
-import logging, datetime, pytz, yaml
+import datetime
+import logging
+
+import pytz
+import yaml
 from binance.client import Client
-from operator import itemgetter
-from telegram.ext import Updater, CommandHandler
+from telegram.ext import CommandHandler, Updater
 
 # Enable logging
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
-)
+logging.basicConfig(format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -60,9 +61,7 @@ def error(update, context):
 
 def send_message(context, message):
     """Sends a message to Telegram based on chat ID of user or group."""
-    context.bot.send_message(
-        chat_id=telegram_config["chat_id"], text=message, parse_mode="HTML"
-    )
+    context.bot.send_message(chat_id=telegram_config["chat_id"], text=message, parse_mode="HTML")
 
 
 def check_balance(update, context):
@@ -82,17 +81,19 @@ def get_balance(context):
     client = Client(binance_config["api_key"], binance_config["secret_key"])
 
     total_quote_balance = 0
-    assets = get_all_assets(client)
     asset_balance_dict = {}
 
-    for asset in assets:
-        price = (
-            float(client.get_avg_price(symbol=asset + "USDT")["price"])
-            if asset != "USDT"
-            else 1
-        )
+    symbols = get_3c_open_order_symbols(client)
+    base_assets = get_assets_from_symbols(client, symbols, "baseAsset")
+    quote_assets = get_assets_from_symbols(client, symbols, "quoteAsset")
+    all_assets = base_assets + quote_assets
+
+    for asset in all_assets:
+        price = float(client.get_avg_price(symbol=asset + "USDT")["price"]) if asset != "USDT" else 1
         asset_balance = client.get_asset_balance(asset=asset)
         asset_qty = float(asset_balance["locked"]) + float(asset_balance["free"])
+        if binance_config["use_flexible_savings"] == True and asset in quote_assets:
+            asset_qty += float(client.get_lending_position(asset=asset)[0]["freeAmount"])
         quote_balance = price * asset_qty
         rounded_balance = "{:.2f}".format(round(quote_balance, 2))
         asset_balance_dict[asset] = rounded_balance
@@ -107,20 +108,25 @@ def get_balance(context):
     send_message(context, telegram_msg)
 
 
-def get_all_assets(client):
+def get_3c_open_order_symbols(client: Client) -> set:
+    return {ord["symbol"] for ord in client.get_open_orders() if "deal" in ord["clientOrderId"]}
+
+
+def get_assets_from_symbols(client: Client, symbols: set, asset_side: str) -> list:
     if binance_config["auto_detect_3commas_orders"]:
-        symbols_3c = {
-            ord["symbol"]
-            for ord in client.get_open_orders()
-            if "deal" in ord["clientOrderId"]
-        }
-        base_quote_assets = [
-            itemgetter("baseAsset", "quoteAsset")(client.get_symbol_info(sym))
-            for sym in symbols_3c
-        ]
-        return sorted({item for sublist in base_quote_assets for item in sublist})
+        base_quote_assets = [(client.get_symbol_info(sym)[asset_side]) for sym in symbols]
+        return sorted({asset for asset in base_quote_assets})
     else:
         return sorted(binance_config["asset_symbols"])
+
+
+# def get_all_assets(client: Client):
+#     if binance_config["auto_detect_3commas_orders"]:
+
+#         base_quote_assets = [itemgetter("baseAsset", "quoteAsset")(client.get_symbol_info(sym)) for sym in symbols_3c]
+#         return sorted({item for sublist in base_quote_assets for item in sublist})
+#     else:
+#         return sorted(binance_config["asset_symbols"])
 
 
 def build_telegram_message(asset_balance_dict, total_balance):
