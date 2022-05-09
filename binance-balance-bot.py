@@ -93,7 +93,9 @@ def get_balance(context):
         asset_balance = client.get_asset_balance(asset=asset)
         asset_qty = float(asset_balance["locked"]) + float(asset_balance["free"])
         if binance_config["use_flexible_savings"] == True and asset in quote_assets:
-            asset_qty += float(client.get_lending_position(asset=asset)[0]["freeAmount"])
+            asset_savings = client.get_lending_position(asset=asset)
+            if asset_savings is not None and len(asset_savings) > 0:
+                asset_qty += float(asset_savings[0]["freeAmount"])
         quote_balance = price * asset_qty
         rounded_balance = "{:.2f}".format(round(quote_balance, 2))
         asset_balance_dict[asset] = rounded_balance
